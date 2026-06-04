@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@800&family=Syncopate:wght@700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-syne: "Syne", sans-serif;
+  --font-syncopate: "Syncopate", sans-serif;
+
+  /* Custom glow heights and transitions */
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-ping-slow: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.15), 0 0 25px rgba(244, 63, 94, 0.3);
+  }
+}
+
+/* Hide scrollbars globally for a sleek presentation view, while preserving native scrolling */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important;  /* IE and Edge */
+}
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari and Opera */
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Clubbing Memberz Only",
+  "description": "Presentazione interattiva per eventi musicali di fine estate, strutturata a slide con linea temporale, mappa interattiva dei club e dettagli degli eventi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
