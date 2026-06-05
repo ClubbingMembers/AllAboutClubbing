@@ -110,6 +110,41 @@ const EVENT_LINKS_MAP: Record<string, { instagram: string; website: string }> = 
   }
 };
 
+// Specific highly-optimized Google Maps query mapper for 1:1 local town pinning
+const getGoogleMapsQuery = (event: MusicalEvent) => {
+  if (!event) return '';
+  switch (event.id) {
+    case 'no-art-puglia':
+      return 'Parco Archeologico di Egnazia, Fasano, Brindisi, Puglia, Italy';
+    case 'badawi-puglia':
+      return 'Fasano, Brindisi, Puglia, Italy';
+    case 'viva-festival':
+      return 'Locorotondo, Bari, Puglia, Italy';
+    case 'crx-festival':
+      return 'Grottaglie, Taranto, Puglia, Italy';
+    case 'circoloco-grottella':
+      return 'Masseria Grottella, Grottaglie, Taranto, Puglia, Italy';
+    case 'masseria-wave':
+      return 'Lequile, Lecce, Puglia, Italy';
+    case 'iperibleo':
+      return 'Palazzolo Acreide, Siracusa, Sicilia, Italy';
+    case 'opera-festival':
+      return 'Milo, Catania, Sicilia, Italy';
+    case 'zamna-sardinia':
+      return 'Baja Sardinia, Sassari, Sardegna, Italy';
+    case 'selectors-croatia':
+      return 'The Garden Tisno, Tisno, Croatia';
+    case 'butik-slovenia':
+      return 'Tolmin, Slovenia';
+    case 'waking-life':
+      return 'Crato, Alentejo, Portugal';
+    case 'dekmantel-amsterdam':
+      return 'Amsterdamse Bos, Amstelveen, Netherlands';
+    default:
+      return `${event.venue}, ${event.location}`;
+  }
+};
+
 export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
   event,
   slideNumber,
@@ -395,6 +430,35 @@ export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
             </div>
           </div>
         )}
+
+        {/* ADD ON GOOGLE MAPS LOCATION RIG */}
+        <div className="space-y-2 pt-2" id="detail-map-addon-section">
+          <h3 className={`font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
+            <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+            MAPPA LOCATION / CLUB:
+          </h3>
+          <div className={`relative h-[200px] w-full flex flex-col justify-between rounded-xl overflow-hidden border ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0f1424]/60 border-white/5'
+          }`}>
+            <div className="flex-grow flex-1 relative w-full h-full overflow-hidden flex items-center justify-center bg-[#070b13]">
+              <iframe
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(getGoogleMapsQuery(event))}&t=m&z=13&ie=UTF8&iwloc=&output=embed`}
+                className="absolute inset-0 w-full h-full border-0 rounded-xl z-10 opacity-90"
+                allowFullScreen={false}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                title={`Google Map Satellite for ${event.name}`}
+              />
+            </div>
+            {/* Coordinates overlay stats footer */}
+            <div className={`h-8 border-t px-3.5 flex items-center justify-between z-40 font-mono text-[8px] shrink-0 ${
+              isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#0f1424] border-white/5 text-white/50'
+            }`}>
+              <div>GOOGLE MAPS COORDINATE INTEGRATE</div>
+              <div className="uppercase">LOCATION: {event.location.split(',')[0]}</div>
+            </div>
+          </div>
+        </div>
 
         {/* PARTECIPANTI REGISTRATI */}
         <div className="space-y-2.5 pt-2" id="detail-registrations-section">

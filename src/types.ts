@@ -30,7 +30,7 @@ export interface EventRegistration {
   firstName: string;
   lastName: string;
   instagram?: string; // Optional Instagram handle
-  whatsapp: string; // WhatsApp number
+  whatsapp?: string; // Optional WhatsApp number
   eventIds: string[]; // List of selected event IDs
   seeksAccommodation: boolean; // Flag to indicate if they need lodging with us
   accommodationNote?: string; // Optional accommodation preference note (max 300 chars)

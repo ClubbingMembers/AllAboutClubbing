@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Users } from 'lucide-react';
+import { Sparkles, Users, ChevronRight } from 'lucide-react';
 
 interface IntroductionSlideProps {
   title: string;
@@ -7,6 +7,7 @@ interface IntroductionSlideProps {
   eventCount: number;
   registrationsCount: number;
   theme?: string;
+  onEnter?: () => void;
 }
 
 export const IntroductionSlide: React.FC<IntroductionSlideProps> = ({
@@ -14,6 +15,7 @@ export const IntroductionSlide: React.FC<IntroductionSlideProps> = ({
   subtitle,
   theme,
   registrationsCount,
+  onEnter,
 }) => {
   const isLight = theme === 'light';
 
@@ -59,6 +61,18 @@ export const IntroductionSlide: React.FC<IntroductionSlideProps> = ({
             </span>
           </div>
         </div>
+
+        {onEnter && (
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={onEnter}
+              className="px-6 py-2.5 rounded-xl bg-[#f43f5e] hover:bg-[#e11d48] text-white font-mono text-[10px] uppercase font-bold tracking-widest transition-transform hover:scale-105 select-none active:scale-95 cursor-pointer flex items-center gap-2 shadow-lg shadow-[#f43f5e]/20"
+            >
+              <span>ESPLORA EVENTI</span>
+              <ChevronRight className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        )}
 
       </div>
 

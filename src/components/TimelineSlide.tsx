@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, Clock, MapPin, Tag, Star, ChevronLeft, Users } from 'lucide-react';
+import { ChevronRight, Clock, MapPin, Tag, Star, ChevronLeft, Users, Search } from 'lucide-react';
 import { MusicalEvent, EventRegistration } from '../types';
 
 interface TimelineSlideProps {
@@ -16,9 +16,15 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
   registrations = [],
 }) => {
   const isLight = theme === 'light';
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Sort events by timestamp
   const sortedEvents = [...events].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Filter events based on search query match
+  const filteredEvents = sortedEvents.filter(event => 
+    event.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getCountdownText = (timestamp: number) => {
     const diff = timestamp - Date.now();
@@ -84,7 +90,7 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
 
   // Quick helper to check if a day has events
   const getEventsForDay = (day: number) => {
-    return sortedEvents.filter(e => {
+    return filteredEvents.filter(e => {
       const d = new Date(e.timestamp);
       return d.getFullYear() === activeYear && d.getMonth() === activeMonthNum && d.getDate() === day;
     });
@@ -123,6 +129,30 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
         }`}>
           La cronologia temporale da luglio a fine estate. Clicca sul calendario o su un evento per aprire i dettagli, line-up e biglietti.
         </p>
+      </div>
+
+      {/* COMPRESSIVE SEARCH BAR */}
+      <div className="my-4 z-10 relative">
+        <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-[#f43f5e]/40 ${
+          isLight ? 'bg-slate-50 border-slate-200 focus-within:bg-white' : 'bg-slate-950/40 border-white/5 focus-within:bg-[#0c1220]'
+        }`}>
+          <Search className="w-4 h-4 text-[#f43f5e] shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cerca per evento"
+            className="w-full bg-transparent border-0 outline-none text-xs font-sans placeholder-slate-500 focus:ring-0 p-0 text-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#f43f5e]/10 text-[#f43f5e] hover:bg-[#f43f5e] hover:text-white transition-colors cursor-pointer"
+            >
+              RESET
+            </button>
+          )}
+        </div>
       </div>
 
       {/* COMPACT CALENDAR BOX */}
@@ -208,92 +238,103 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
       <div className="my-5 z-10 flex-grow relative w-full pr-1">
         
         {/* Timeline main vertical line stem */}
-        <div className="absolute top-0 bottom-0 left-[14px] w-0.5 bg-gradient-to-b from-[#f43f5e] via-purple-500 to-emerald-500 rounded-full" />
+        {filteredEvents.length > 0 && (
+          <div className="absolute top-0 bottom-0 left-[14px] w-0.5 bg-gradient-to-b from-[#f43f5e] via-purple-500 to-emerald-500 rounded-full" />
+        )}
 
         <div className="space-y-4">
-          {sortedEvents.map((event) => {
-            return (
-              <button
-                key={event.id}
-                id={`timeline-node-${event.id}`}
-                onClick={() => onSelectEvent(event.id)}
-                className="w-full text-left flex items-start gap-2.5 group focus:outline-none transition-transform duration-300 active:scale-[0.99] hover:translate-x-0.5"
-              >
-                {/* Visual Circle Indicator along vertical path */}
-                <div className="relative shrink-0 flex items-center justify-center pt-2">
-                  <div className={`w-7 h-7 rounded-full border-2 border-[#f43f5e]/80 group-hover:border-slate-400 transition-all flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.25)] z-20 ${
-                    isLight ? 'bg-white' : 'bg-slate-900'
+          {filteredEvents.length === 0 ? (
+            <div className={`p-8 text-center border border-dashed rounded-2xl ${
+              isLight ? 'border-slate-250 text-slate-500 bg-slate-50/50' : 'border-white/5 text-white/40 bg-[#0f1424]/40'
+            }`}>
+              <div className="font-mono text-xs font-bold text-[#f43f5e] mb-1">NESSUN EVENTO TROVATO</div>
+              <p className="text-[10px] leading-relaxed">Nessun evento corrisponde alle lettere inserite ("{searchQuery}"). Prova a digitare un altro nome o clicca su RESET.</p>
+            </div>
+          ) : (
+            filteredEvents.map((event) => {
+              return (
+                <button
+                  key={event.id}
+                  id={`timeline-node-${event.id}`}
+                  onClick={() => onSelectEvent(event.id)}
+                  className="w-full text-left flex items-start gap-2.5 group focus:outline-none transition-transform duration-300 active:scale-[0.99] hover:translate-x-0.5"
+                >
+                  {/* Visual Circle Indicator along vertical path */}
+                  <div className="relative shrink-0 flex items-center justify-center pt-2">
+                    <div className={`w-7 h-7 rounded-full border-2 border-[#f43f5e]/80 group-hover:border-slate-400 transition-all flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.25)] z-20 ${
+                      isLight ? 'bg-white' : 'bg-slate-900'
+                    }`}>
+                      <Clock className={`w-3 h-3 ${isLight ? 'text-[#f43f5e]' : 'text-white'}`} />
+                    </div>
+                    {/* Subtle pulse under nodes */}
+                    <div className="absolute w-7 h-7 rounded-full bg-[#f43f5e]/10 -z-10 animate-pulse" />
+                  </div>
+
+                  {/* Event Information Card */}
+                  <div className={`flex-grow p-3 border rounded-xl shadow-sm transition-all duration-300 w-full min-w-0 overflow-hidden ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 group-hover:border-[#f43f5e]/80 group-hover:bg-amber-50/10'
+                      : 'bg-[#121824]/60 border-white/5 group-hover:border-white/20 group-hover:bg-slate-900/40'
                   }`}>
-                    <Clock className={`w-3 h-3 ${isLight ? 'text-[#f43f5e]' : 'text-white'}`} />
-                  </div>
-                  {/* Subtle pulse under nodes */}
-                  <div className="absolute w-7 h-7 rounded-full bg-[#f43f5e]/10 -z-10 animate-pulse" />
-                </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="space-y-1">
+                        {/* Date Indicator badge and Registered User count replacing Countdown */}
+                        <div className="flex justify-between items-center gap-2 select-none">
+                          <span className="font-mono text-[9px] font-bold text-[#f43f5e] tracking-wider uppercase">
+                            {event.date}
+                          </span>
+                          <span 
+                            className="font-mono text-[9px] font-bold bg-[#f43f5e]/10 text-[#f43f5e] px-2 py-0.5 rounded-full border border-[#f43f5e]/15 shrink-0 flex items-center gap-1"
+                            title={`${registrations.filter(r => r.eventIds.includes(event.id)).length} registrati`}
+                          >
+                            <Users className="w-2.5 h-2.5" />
+                            <span>{registrations.filter(r => r.eventIds.includes(event.id)).length}</span>
+                          </span>
+                        </div>
+                        
+                        <h3 className={`font-display font-bold text-xs md:text-sm leading-snug flex items-center gap-1.5 flex-wrap whitespace-normal ${
+                          isLight ? 'text-slate-800' : 'text-white'
+                        }`}>
+                          <span className="break-words">{event.name}</span>
+                          {event.isFavorite && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 shrink-0" />
+                          )}
+                          {event.isInternational && (
+                            <span className="font-mono text-[7px] bg-sky-500/10 text-sky-400 border border-sky-400/20 px-1 rounded uppercase shrink-0 font-bold">ESTERO</span>
+                          )}
+                        </h3>
 
-                {/* Event Information Card */}
-                <div className={`flex-grow p-3 border rounded-xl shadow-sm transition-all duration-300 w-full min-w-0 overflow-hidden ${
-                  isLight
-                    ? 'bg-slate-50 border-slate-200 group-hover:border-[#f43f5e]/80 group-hover:bg-amber-50/10'
-                    : 'bg-[#121824]/60 border-white/5 group-hover:border-white/20 group-hover:bg-slate-900/40'
-                }`}>
-                  <div className="flex flex-col gap-2">
-                    <div className="space-y-1">
-                      {/* Date Indicator badge and Registered User count replacing Countdown */}
-                      <div className="flex justify-between items-center gap-2 select-none">
-                        <span className="font-mono text-[9px] font-bold text-[#f43f5e] tracking-wider uppercase">
-                          {event.date}
-                        </span>
-                        <span 
-                          className="font-mono text-[9px] font-bold bg-[#f43f5e]/10 text-[#f43f5e] px-2 py-0.5 rounded-full border border-[#f43f5e]/15 shrink-0 flex items-center gap-1"
-                          title={`${registrations.filter(r => r.eventIds.includes(event.id)).length} registrati`}
-                        >
-                          <Users className="w-2.5 h-2.5" />
-                          <span>{registrations.filter(r => r.eventIds.includes(event.id)).length}</span>
-                        </span>
+                        <p className={`font-mono text-[10px] flex items-start gap-1 mt-1 leading-snug whitespace-normal ${
+                          isLight ? 'text-slate-500' : 'text-white/50'
+                        }`}>
+                          <MapPin className="w-3 h-3 text-[#f43f5e] shrink-0 mt-0.5" />
+                          <span className="block min-w-0 flex-1 break-words">
+                            <strong className={`block font-bold tracking-tight ${isLight ? 'text-slate-750' : 'text-white/90'}`}>{event.venue}</strong>
+                            <span className={`text-[9px] block ${isLight ? 'text-slate-500' : 'text-white/40'}`}>{event.location}</span>
+                          </span>
+                        </p>
                       </div>
-                      
-                      <h3 className={`font-display font-bold text-xs md:text-sm leading-snug flex items-center gap-1.5 flex-wrap whitespace-normal ${
-                        isLight ? 'text-slate-800' : 'text-white'
-                      }`}>
-                        <span className="break-words">{event.name}</span>
-                        {event.isFavorite && (
-                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 shrink-0" />
-                        )}
-                        {event.isInternational && (
-                          <span className="font-mono text-[7px] bg-sky-500/10 text-sky-400 border border-sky-400/20 px-1 rounded uppercase shrink-0 font-bold">ESTERO</span>
-                        )}
-                      </h3>
 
-                      <p className={`font-mono text-[10px] flex items-start gap-1 mt-1 leading-snug whitespace-normal ${
-                        isLight ? 'text-slate-500' : 'text-white/50'
-                      }`}>
-                        <MapPin className="w-3 h-3 text-[#f43f5e] shrink-0 mt-0.5" />
-                        <span className="block min-w-0 flex-1 break-words">
-                          <strong className={`block font-bold tracking-tight ${isLight ? 'text-slate-750' : 'text-white/90'}`}>{event.venue}</strong>
-                          <span className={`text-[9px] block ${isLight ? 'text-slate-500' : 'text-white/40'}`}>{event.location}</span>
+                      <div className={`flex items-center justify-between border-t pt-1.5 mt-1 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+                        <span className={`text-[8px] font-mono px-2 py-0.5 rounded uppercase ${
+                          isLight 
+                            ? 'bg-slate-100 border border-slate-200 text-slate-700' 
+                            : 'bg-white/5 border border-white/10 text-white/80'
+                        }`}>
+                          {event.genre}
                         </span>
-                      </p>
-                    </div>
-
-                    <div className={`flex items-center justify-between border-t pt-1.5 mt-1 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
-                      <span className={`text-[8px] font-mono px-2 py-0.5 rounded uppercase ${
-                        isLight 
-                          ? 'bg-slate-100 border border-slate-200 text-slate-700' 
-                          : 'bg-white/5 border border-white/10 text-white/80'
-                      }`}>
-                        {event.genre}
-                      </span>
-                      
-                      <div className="text-[10px] text-[#f43f5e] font-mono flex items-center gap-0.5 opacity-85 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
-                        <span>Vedi</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        
+                        <div className="text-[10px] text-[#f43f5e] font-mono flex items-center gap-0.5 opacity-85 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+                          <span>Vedi</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 

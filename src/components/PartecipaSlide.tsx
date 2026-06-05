@@ -25,6 +25,7 @@ interface PartecipaSlideProps {
   events: MusicalEvent[];
   registrations: EventRegistration[];
   onAddRegistration: (reg: EventRegistration) => void;
+  onDeleteRegistration?: (id: string) => void;
   suggestions: Suggestion[];
   onAddSuggestion: (title: string, date: string) => void;
   theme?: string;
@@ -35,6 +36,7 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
   events,
   registrations,
   onAddRegistration,
+  onDeleteRegistration,
   suggestions = [],
   onAddSuggestion,
   theme,
@@ -83,10 +85,6 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
       setFormError('Nome e Cognome sono obbligatori.');
       return;
     }
-    if (!whatsapp.trim()) {
-      setFormError('Il numero WhatsApp è obbligatorio.');
-      return;
-    }
     if (selectedEventIds.length === 0) {
       setFormError('Seleziona almeno un evento a cui partecipare.');
       return;
@@ -103,7 +101,7 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       instagram: igHandle || undefined,
-      whatsapp: whatsapp.trim(),
+      whatsapp: whatsapp.trim() || undefined,
       eventIds: selectedEventIds,
       seeksAccommodation,
       accommodationNote: seeksAccommodation && accommodationNote.trim() ? accommodationNote.trim() : undefined,
@@ -158,11 +156,29 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
     }, 4000);
   };
 
-  // Group registrations by event
+  // Sort events chronologically from closest to furthest for simple chronological search layout
+  const sortedEvents = [...events].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Group registrations by event using sorted list
   // Only show events that have at least one registration
-  const eventsWithRegistrations = events.filter(event => 
+  const eventsWithRegistrations = sortedEvents.filter(event => 
     registrations.some(reg => reg.eventIds.includes(event.id))
   );
+
+  // Retrieve the IDs of registrations made on this device
+  const getMyRegistrations = () => {
+    try {
+      const savedIds = localStorage.getItem('my_registrations_ids');
+      if (!savedIds) return [];
+      const parsedIds = JSON.parse(savedIds) as string[];
+      // Filter registrations list to find those owned by this browser
+      return registrations.filter(reg => parsedIds.includes(reg.id));
+    } catch {
+      return [];
+    }
+  };
+
+  const myRegs = getMyRegistrations();
 
   return (
     <div className="p-4 sm:p-5 flex flex-col gap-6" id="partecipa-slide-container">
@@ -236,7 +252,10 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
 
         {/* WhatsApp & Instagram */}
         <div className="flex flex-col gap-1.5">
-          <label className={`font-mono text-[8px] uppercase select-none ${isLight ? 'text-slate-500' : 'text-white/40'}`}>WhatsApp (Per Gruppo)</label>
+          <div className="flex justify-between items-center">
+            <label className={`font-mono text-[8px] uppercase select-none ${isLight ? 'text-slate-500' : 'text-white/40'}`}>WhatsApp (Per Gruppo)</label>
+            <span className="text-[7.5px] font-mono text-white/30 italic">Opzionale</span>
+          </div>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500"><Phone className="w-3.5 h-3.5" /></span>
             <input
@@ -298,7 +317,7 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
             <div className={`absolute top-full left-0 w-full mt-1.5 p-2 rounded-xl border z-20 shadow-2xl flex flex-col gap-1 max-h-48 overflow-y-auto ${
               isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-white/10'
             }`} id="event-multiselect-dropdown">
-              {events.map((ev) => {
+              {sortedEvents.map((ev) => {
                 const isSelected = selectedEventIds.includes(ev.id);
                 return (
                   <button
@@ -529,7 +548,7 @@ export const PartecipaSlide: React.FC<PartecipaSlideProps> = ({
                             ? 'bg-slate-50 border-slate-100 text-slate-800 hover:bg-slate-100' 
                             : 'bg-black/30 border-white/5 text-white/90 hover:bg-black/50'
                         }`}
-                        title={`${guest.firstName} ${guest.lastName} (${guest.whatsapp}) ${guest.seeksAccommodation ? '- Cerca alloggio' : ''}`}
+                        title={`${guest.firstName} ${guest.lastName} ${guest.whatsapp ? `(${guest.whatsapp})` : ''} ${guest.seeksAccommodation ? '- Cerca alloggio' : ''}`}
                         onClick={(e) => {
                           // Prevent triggering the card's click event when clicking on a guest element
                           e.stopPropagation();

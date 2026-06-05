@@ -48,7 +48,7 @@ export default function App() {
   // Try loading events and choices from localStorage to make editing persistent
   const [events, setEvents] = useState<MusicalEvent[]>(() => {
     try {
-      const saved = localStorage.getItem('clubbing_events_data_v5');
+      const saved = localStorage.getItem('clubbing_events_data_v6');
       if (saved) {
         const parsed = JSON.parse(saved) as MusicalEvent[];
         // Sync preset event details (lineup, date, description, venue, location) directly from INITIAL_EVENTS presets
@@ -75,7 +75,7 @@ export default function App() {
         // Auto-merge any entirely missing events from INITIAL_EVENTS (e.g. Nextones, Selectors, Butik)
         const missing = INITIAL_EVENTS.filter(initEv => !synced.some(pe => pe.id === initEv.id));
         const merged = [...synced, ...missing];
-        localStorage.setItem('clubbing_events_data_v5', JSON.stringify(merged));
+        localStorage.setItem('clubbing_events_data_v6', JSON.stringify(merged));
         return merged;
       }
       return INITIAL_EVENTS;
@@ -155,6 +155,14 @@ export default function App() {
     setRegistrations(prev => [newReg, ...prev]);
     triggerNotification(`Registrato con successo: ${newReg.firstName}!`);
 
+    // Record registration ID as owned by this device
+    try {
+      const currentIds = JSON.parse(localStorage.getItem('my_registrations_ids') || '[]');
+      localStorage.setItem('my_registrations_ids', JSON.stringify([...currentIds, newReg.id]));
+    } catch {
+      localStorage.setItem('my_registrations_ids', JSON.stringify([newReg.id]));
+    }
+
     try {
       const res = await fetch('/api/registrations', {
         method: 'POST',
@@ -170,6 +178,32 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error posting registration:', err);
+    }
+  };
+
+  const handleDeleteRegistration = async (id: string) => {
+    const previousRegs = [...registrations];
+    setRegistrations(prev => prev.filter(r => r.id !== id));
+    triggerNotification(`Registrazione cancellata!`);
+
+    try {
+      const res = await fetch(`/api/registrations/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        setRegistrations(previousRegs);
+        triggerNotification(`Errore nella cancellazione.`);
+      } else {
+        const savedMyRegs = localStorage.getItem('my_registrations_ids');
+        if (savedMyRegs) {
+          const ids = JSON.parse(savedMyRegs) as string[];
+          localStorage.setItem('my_registrations_ids', JSON.stringify(ids.filter(savedId => savedId !== id)));
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting registration:', err);
+      setRegistrations(previousRegs);
+      triggerNotification(`Errore di connessione.`);
     }
   };
 
@@ -206,7 +240,7 @@ export default function App() {
 
   // Sync edits to LocalStorage
   useEffect(() => {
-    localStorage.setItem('clubbing_events_data_v5', JSON.stringify(events));
+    localStorage.setItem('clubbing_events_data_v6', JSON.stringify(events));
   }, [events]);
 
   useEffect(() => {
@@ -385,6 +419,7 @@ export default function App() {
                     eventCount={events.length}
                     registrationsCount={registrations.length}
                     theme={config.theme}
+                    onEnter={() => setActiveTab('timeline')}
                   />
                 ) : activeTab === 'timeline' ? (
                   <TimelineSlide 
@@ -410,6 +445,7 @@ export default function App() {
                     events={events}
                     registrations={registrations}
                     onAddRegistration={handleAddRegistration}
+                    onDeleteRegistration={handleDeleteRegistration}
                     suggestions={suggestions}
                     onAddSuggestion={handleAddSuggestion}
                     theme={config.theme}
@@ -454,22 +490,6 @@ export default function App() {
                 >
                   <Calendar className="w-5 h-5 text-emerald-500" />
                   <span className="font-mono text-[8px] uppercase tracking-wider">EVENTI</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('map');
-                    setSelectedEventId(null);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all hover:scale-105 cursor-pointer ${
-                    activeTab === 'map'
-                      ? 'text-[#f43f5e] font-bold'
-                      : (isLightMode ? 'text-slate-500 hover:text-slate-800' : 'text-white/50 hover:text-white')
-                  }`}
-                >
-                  <Compass className="w-5 h-5 text-[#00b4d8]" />
-                  <span className="font-mono text-[8px] uppercase tracking-wider">MAPPA</span>
                 </button>
 
                 <button
