@@ -28,6 +28,10 @@ interface EventDetailSlideProps {
 
 // Complete real-world map of social handles and official sites for each electronic music event
 const EVENT_LINKS_MAP: Record<string, { instagram: string; website: string }> = {
+  'sonora-festival': {
+    instagram: 'https://www.instagram.com/sonorafestival/',
+    website: 'https://www.sonorafestival.it'
+  },
   'vox-marmoris': {
     instagram: 'https://www.instagram.com/voxmarmoris/',
     website: 'https://www.voxmarmoris.it'
@@ -84,6 +88,42 @@ const EVENT_LINKS_MAP: Record<string, { instagram: string; website: string }> = 
     instagram: 'https://www.instagram.com/decibelopenair/',
     website: 'https://www.decibelopenair.com'
   },
+  'polifonic-puglia': {
+    instagram: 'https://www.instagram.com/polifonic_/',
+    website: 'https://www.polifonic.it'
+  },
+  'panorama-festival': {
+    instagram: 'https://www.instagram.com/panoramafestival.it/',
+    website: 'https://www.panorama-festival.it'
+  },
+  'cala-mariposa': {
+    instagram: 'https://www.instagram.com/calamariposabeach/',
+    website: 'https://www.calamariposa.com'
+  },
+  'clorophilla-club': {
+    instagram: 'https://www.instagram.com/clorophillaclub/',
+    website: 'https://clorophillaclub.it'
+  },
+  'the-sanctuary-itria': {
+    instagram: 'https://www.instagram.com/thesanctuaryecoretreat/',
+    website: 'https://thesanctuaryunderground.com/'
+  },
+  'sacro-puglia': {
+    instagram: 'https://www.instagram.com/sacroitaly/',
+    website: 'https://www.sacroritual.com'
+  },
+  'mandarino-club': {
+    instagram: 'https://www.instagram.com/mandarinoclub/',
+    website: 'https://www.mandarinoclub.it'
+  },
+  'plaza-bay': {
+    instagram: 'https://www.instagram.com/plazabaybarletta/',
+    website: 'https://plazabay.it'
+  },
+  'nextones-fest': {
+    instagram: 'https://www.instagram.com/nextones/',
+    website: 'https://www.tonesteatronatura.com/nextones/'
+  },
   'selectors-croatia': {
     instagram: 'https://www.instagram.com/dekmantelselectors/',
     website: 'https://www.dekmantel.com/selectors'
@@ -99,10 +139,6 @@ const EVENT_LINKS_MAP: Record<string, { instagram: string; website: string }> = 
   'dekmantel-amsterdam': {
     instagram: 'https://www.instagram.com/dekmantelfestival/',
     website: 'https://www.dekmantelfestival.com'
-  },
-  'nextones-fest': {
-    instagram: 'https://www.instagram.com/nextones/',
-    website: 'https://www.tonesteatronatura.com/nextones/'
   },
   'monegros-desert-festival': {
     instagram: 'https://www.instagram.com/monegrosfestival/',
@@ -154,6 +190,7 @@ export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [searchLineupQuery, setSearchLineupQuery] = useState('');
 
   const isLight = theme === 'light';
 
@@ -186,6 +223,7 @@ export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
   useEffect(() => {
     setIsPlaying(false);
     setProgress(0);
+    setSearchLineupQuery('');
   }, [event.id]);
 
   return (
@@ -268,25 +306,99 @@ export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
           </p>
         </div>
 
-        {/* Lineup Block - CITALA COMPLETA */}
-        <div className="space-y-2">
-          <h3 className={`font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
-            <UserCheck className="w-3.5 h-3.5 text-[#f43f5e]" />
-            LINE-UP COMPLETA:
-          </h3>
+        {/* Lineup Block with Main 4 summary & Search engine for all DJs */}
+        <div className="space-y-3 p-3.5 rounded-xl border border-dashed border-[#f43f5e]/30 bg-[#f43f5e]/[0.02]">
+          <div className="flex items-center justify-between">
+            <h3 className={`font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <UserCheck className="w-3.5 h-3.5 text-[#f43f5e]" />
+              LINE-UP HIGHLIGHTS (MAIN 4):
+            </h3>
+            <span className="font-mono text-[8.5px] tracking-widest text-[#f43f5e] font-bold uppercase">
+              TOP VIBES
+            </span>
+          </div>
+
+          {/* Core summary grid for the top 4 DJs */}
           <div className="grid grid-cols-2 gap-1.5">
-            {event.lineup.map((artist) => (
+            {event.lineup.slice(0, 4).map((artist) => (
               <div
                 key={artist}
-                className={`p-2 border rounded-lg text-xs font-semibold text-center truncate tracking-tight transition-colors ${
+                className={`p-2 border rounded-lg text-xs font-bold text-center truncate tracking-tight transition-all duration-200 ${
                   isLight 
-                    ? 'bg-white border-slate-200 hover:border-slate-300 text-slate-800' 
-                    : 'bg-[#121824]/80 border border-white/5 hover:border-white/10 text-white'
+                    ? 'bg-white border-slate-200 hover:border-[#f43f5e]/30 hover:scale-[1.02] text-slate-800' 
+                    : 'bg-[#121824]/80 border border-white/5 hover:border-[#f43f5e]/20 hover:scale-[1.02] text-white'
                 }`}
               >
                 {artist}
               </div>
             ))}
+          </div>
+
+          {/* Search Box in the Lineup: "cerca nella line up" where all DJs are listed */}
+          <div className={`p-2.5 rounded-lg space-y-2 ${isLight ? 'bg-slate-100/80 border border-slate-200' : 'bg-[#0f1424]/90 border border-white/5'}`} id="lineup-search-container">
+            <div className="flex items-center justify-between">
+              <label htmlFor="lineup-search-input" className={`font-mono text-[8.5px] uppercase tracking-wider font-bold ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
+                CERCA NELLA LINE-UP COMPLETA ({event.lineup.length} ARTISTI)
+              </label>
+              {searchLineupQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchLineupQuery('')}
+                  className="font-mono text-[8px] text-[#f43f5e] hover:underline cursor-pointer"
+                >
+                  RESET
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                id="lineup-search-input"
+                type="text"
+                placeholder="Digita il nome del DJ..."
+                value={searchLineupQuery}
+                onChange={(e) => setSearchLineupQuery(e.target.value)}
+                className={`w-full py-1.5 px-3 rounded-md text-xs font-sans outline-none border transition-all ${
+                  isLight
+                    ? 'bg-white border-slate-300 text-slate-900 focus:border-[#f43f5e]'
+                    : 'bg-black/40 border-white/5 text-white focus:border-[#f43f5e]'
+                }`}
+              />
+            </div>
+
+            {/* Filtered list of all DJs matching query */}
+            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pt-1 pr-1" id="lineup-search-results">
+              {(() => {
+                const query = searchLineupQuery.toLowerCase().trim();
+                const filtered = event.lineup.filter(artist => 
+                  artist.toLowerCase().includes(query)
+                );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className={`w-full text-center py-1 font-mono text-[9px] ${isLight ? 'text-slate-400' : 'text-white/30'}`}>
+                      Nessun DJ corrisponde alla ricerca.
+                    </div>
+                  );
+                }
+
+                return filtered.map((artist) => {
+                  const isMain4 = event.lineup.slice(0, 4).includes(artist);
+                  return (
+                    <span
+                      key={artist}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono leading-none tracking-tight flex items-center gap-1 ${
+                        isMain4
+                          ? 'bg-[#f43f5e]/10 text-[#f43f5e] border border-[#f43f5e]/20 font-bold'
+                          : (isLight ? 'bg-slate-200 text-slate-700 border border-slate-300' : 'bg-white/5 text-white/75 border border-white/5')
+                      }`}
+                    >
+                      {artist}
+                    </span>
+                  );
+                });
+              })()}
+            </div>
           </div>
         </div>
 
@@ -369,67 +481,6 @@ export const EventDetailSlide: React.FC<EventDetailSlideProps> = ({
             </div>
           )}
         </div>
-
-        {/* Preview Sound Audio Player */}
-        {event.trackSample && (
-          <div className={`p-3.5 border rounded-xl space-y-2.5 backdrop-blur-md ${
-            isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#0f1524]/60 border-white/5'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Music className="w-3.5 h-3.5 text-[#f43f5e]" />
-                <span className={`font-mono text-[9px] tracking-wider ${isLight ? 'text-slate-500' : 'text-white/50'}`}>VIBE PREVIEW</span>
-              </div>
-              {isPlaying && (
-                <span className="flex gap-0.5 items-end h-2.5">
-                  <span className="w-0.5 bg-[#f43f5e] rounded-full animate-bounce h-1.5" />
-                  <span className="w-0.5 bg-purple-500 rounded-full animate-bounce h-2.5 [animation-delay:0.1s]" />
-                  <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce h-1 [animation-delay:0.2s]" />
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  isPlaying 
-                    ? (isLight ? 'bg-slate-900 text-white' : 'bg-white text-slate-900')
-                    : 'bg-[#f43f5e] text-white hover:scale-105'
-                }`}
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 pl-0.5" />}
-              </button>
-
-              <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold truncate ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                  {event.trackSample.title}
-                </div>
-                <div className={`text-[10px] truncate ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
-                  {event.trackSample.artist}
-                </div>
-              </div>
-
-              <div className="text-right">
-                <span className={`font-mono text-[8px] px-1 py-0.5 border rounded text-emerald-500 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-white/5'
-                }`}>
-                  {event.trackSample.bpm} BPM
-                </span>
-              </div>
-            </div>
-
-            {/* Slider progress section */}
-            <div className="space-y-1">
-              <div className={`h-1 rounded-full overflow-hidden ${isLight ? 'bg-slate-200' : 'bg-white/10'}`}>
-                <div
-                  className="h-full bg-gradient-to-r from-[#f43f5e] to-indigo-500 rounded-full transition-all duration-200"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ADD ON GOOGLE MAPS LOCATION RIG */}
         <div className="space-y-2 pt-2" id="detail-map-addon-section">

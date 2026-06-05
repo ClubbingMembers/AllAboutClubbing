@@ -106,6 +106,15 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
+  const [eventViews, setEventViews] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('clubbing_event_views_v2');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [registrations, setRegistrations] = useState<EventRegistration[]>(() => {
     try {
       const saved = localStorage.getItem('clubbing_registrations_v2');
@@ -304,6 +313,11 @@ export default function App() {
   // Handle Event selections to set active event detail screen
   const handleSelectEvent = (eventId: string) => {
     setSelectedEventId(eventId);
+    setEventViews(prev => {
+      const updated = { ...prev, [eventId]: (prev[eventId] || 0) + 1 };
+      localStorage.setItem('clubbing_event_views_v2', JSON.stringify(updated));
+      return updated;
+    });
     triggerNotification(`Aperto dettaglio evento`);
   };
 
@@ -393,7 +407,7 @@ export default function App() {
             <div className="absolute inset-0 flex flex-col h-full w-full pt-0">
               
               {/* Active content viewport */}
-              <div className="flex-1 w-full relative overflow-y-auto pb-16">
+              <div className="flex-1 w-full relative overflow-y-auto pb-20">
                 {selectedEventId ? (
                   (() => {
                     const ev = events.find(e => e.id === selectedEventId);
@@ -427,6 +441,7 @@ export default function App() {
                     onSelectEvent={handleSelectEvent} 
                     theme={config.theme}
                     registrations={registrations}
+                    eventViews={eventViews}
                   />
                 ) : activeTab === 'map' ? (
                   <MapSlide 
@@ -455,7 +470,7 @@ export default function App() {
               </div>
 
               {/* Seamless Mobile Bottom Navigation Tab Bar */}
-              <div className={`h-16 border-t flex items-center justify-around z-30 shrink-0 backdrop-blur-md px-2 ${
+              <div className={`absolute bottom-0 left-0 right-0 h-16 border-t flex items-center justify-around z-30 backdrop-blur-md px-2 ${
                 isLightMode 
                   ? 'bg-white/95 border-slate-200 text-slate-800' 
                   : 'bg-[#090e18]/95 border-white/5 text-white'

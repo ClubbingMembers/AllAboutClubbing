@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, Clock, MapPin, Tag, Star, ChevronLeft, Users, Search } from 'lucide-react';
+import { ChevronRight, Clock, MapPin, Tag, Star, ChevronLeft, Users, Search, Eye } from 'lucide-react';
 import { MusicalEvent, EventRegistration } from '../types';
 
 interface TimelineSlideProps {
@@ -7,6 +7,7 @@ interface TimelineSlideProps {
   onSelectEvent: (eventId: string) => void;
   theme?: string;
   registrations?: EventRegistration[];
+  eventViews?: Record<string, number>;
 }
 
 export const TimelineSlide: React.FC<TimelineSlideProps> = ({
@@ -14,12 +15,38 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
   onSelectEvent,
   theme,
   registrations = [],
+  eventViews = {},
 }) => {
   const isLight = theme === 'light';
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortingMode, setSortingMode] = useState<'none' | 'views' | 'popularity'>('none');
 
-  // Sort events by timestamp
-  const sortedEvents = [...events].sort((a, b) => a.timestamp - b.timestamp);
+  const getEventViews = (eventId: string) => {
+    return eventViews[eventId] || 0;
+  };
+
+  const getParticipantsCount = (eventId: string) => {
+    return registrations.filter(r => r.eventIds.includes(eventId)).length;
+  };
+
+  const handleEventClick = (eventId: string) => {
+    onSelectEvent(eventId);
+  };
+
+  // Sort events dynamically
+  const sortedEvents = [...events].sort((a, b) => {
+    if (sortingMode === 'views') {
+      const viewsA = getEventViews(a.id);
+      const viewsB = getEventViews(b.id);
+      return viewsB - viewsA; // Descending
+    } else if (sortingMode === 'popularity') {
+      const popA = getParticipantsCount(a.id);
+      const popB = getParticipantsCount(b.id);
+      return popB - popA; // Descending
+    } else {
+      return a.timestamp - b.timestamp; // Chronological ascending
+    }
+  });
 
   // Filter events based on search query match
   const filteredEvents = sortedEvents.filter(event => 
@@ -216,7 +243,7 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
                   {hasEvents ? (
                     <button
                       type="button"
-                      onClick={() => onSelectEvent(dayEvents[0].id)}
+                      onClick={() => handleEventClick(dayEvents[0].id)}
                       className="w-6 h-6 flex items-center justify-center rounded-full bg-[#f43f5e] text-white text-[9.5px] font-bold select-none cursor-pointer transition-transform hover:scale-115 active:scale-95 shadow-[0_2px_8px_rgba(244,63,94,0.4)]"
                       title={`${dayEvents.length} Eventi: ${dayEvents.map(e => e.name).join(', ')}`}
                     >
@@ -233,6 +260,39 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
           </div>
         </div>
       )}
+
+      {/* TWO SMALLEST FILTER BOXES: MOST VIEWED AND POPULAR */}
+      <div className="grid grid-cols-2 gap-2 mb-4" id="timeline-sorting-bar">
+        <button
+          type="button"
+          onClick={() => setSortingMode(sortingMode === 'views' ? 'none' : 'views')}
+          className={`py-1.5 px-3 rounded-xl border font-mono text-[10px] uppercase font-bold tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
+            sortingMode === 'views'
+              ? 'bg-[#f43f5e] border-[#f43f5e] text-white shadow-md shadow-[#f43f5e]/25 scale-[1.02]'
+              : isLight
+                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                : 'bg-[#121824]/60 hover:bg-[#121824] border-white/5 text-slate-300'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Most Viewed</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSortingMode(sortingMode === 'popularity' ? 'none' : 'popularity')}
+          className={`py-1.5 px-3 rounded-xl border font-mono text-[10px] uppercase font-bold tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
+            sortingMode === 'popularity'
+              ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-[1.02]'
+              : isLight
+                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                : 'bg-[#121824]/60 hover:bg-[#121824] border-white/5 text-slate-300'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Popular</span>
+        </button>
+      </div>
 
       {/* Vertical Timeline List Container */}
       <div className="my-5 z-10 flex-grow relative w-full pr-1">
@@ -256,7 +316,7 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
                 <button
                   key={event.id}
                   id={`timeline-node-${event.id}`}
-                  onClick={() => onSelectEvent(event.id)}
+                  onClick={() => handleEventClick(event.id)}
                   className="w-full text-left flex items-start gap-2.5 group focus:outline-none transition-transform duration-300 active:scale-[0.99] hover:translate-x-0.5"
                 >
                   {/* Visual Circle Indicator along vertical path */}
@@ -280,9 +340,20 @@ export const TimelineSlide: React.FC<TimelineSlideProps> = ({
                       <div className="space-y-1">
                         {/* Date Indicator badge and Registered User count replacing Countdown */}
                         <div className="flex justify-between items-center gap-2 select-none">
-                          <span className="font-mono text-[9px] font-bold text-[#f43f5e] tracking-wider uppercase">
-                            {event.date}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[9px] font-bold text-[#f43f5e] tracking-wider uppercase">
+                            <span>{event.date}</span>
+                            {sortingMode === 'views' ? (
+                              <span className="flex items-center gap-1 text-slate-400 bg-slate-500/10 px-1 py-0.5 rounded border border-slate-400/15 shrink-0 font-bold font-mono text-[8px] normal-case">
+                                <Eye className="w-2.5 h-2.5 text-rose-400 animate-pulse" />
+                                <span>{getEventViews(event.id)} views</span>
+                              </span>
+                            ) : sortingMode === 'popularity' ? (
+                              <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-400/15 shrink-0 font-bold font-mono text-[8px] normal-case">
+                                <Users className="w-2.5 h-2.5" />
+                                <span>{getParticipantsCount(event.id)} presenze</span>
+                              </span>
+                            ) : null}
+                          </div>
                           <span 
                             className="font-mono text-[9px] font-bold bg-[#f43f5e]/10 text-[#f43f5e] px-2 py-0.5 rounded-full border border-[#f43f5e]/15 shrink-0 flex items-center gap-1"
                             title={`${registrations.filter(r => r.eventIds.includes(event.id)).length} registrati`}
