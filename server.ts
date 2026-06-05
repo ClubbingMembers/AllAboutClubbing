@@ -1,6 +1,9 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import nodemailer from "nodemailer";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc, runTransaction } from "firebase/firestore";
 
 interface Registration {
   id: string;
@@ -52,82 +55,93 @@ function saveJSON<T>(file: string, list: T[]) {
   }
 }
 
-// In-memory cache synced with disk
+// Initialize Firebase
+const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8"));
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+
+// In-memory cache synced with disk (used as backup fallbacks)
 let registrations: Registration[] = loadJSON<Registration>(REGISTRATIONS_FILE, []);
 let suggestions: Suggestion[] = loadJSON<Suggestion>(SUGGESTIONS_FILE, []);
 
-// KVDB.io Endpoint using the unique App ID for zero-config global cloud synchronization
-const KVDB_BASE = "https://kvdb.io/36b8f192-2012-4d22-b417-cdf6c475e3aa";
-
 async function getRegistrations(): Promise<Registration[]> {
-  // If we are on Vercel or running on serverless, or local memory is uninitialized,
-  // we eagerly sync with the secure cloud key-value store to retrieve other instances' writes.
-  if (process.env.VERCEL || registrations.length === 0) {
-    try {
-      const res = await fetch(`${KVDB_BASE}/registrations`);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.trim() !== "") {
-          const cloudRegs = JSON.parse(text);
-          if (Array.isArray(cloudRegs)) {
-            registrations = cloudRegs;
-            // Backup locally
-            saveJSON(REGISTRATIONS_FILE, registrations);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching registrations from cloud KV:", err);
-    }
+  try {
+    const querySnapshot = await getDocs(collection(db, "registrations"));
+    const list: Registration[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data() as Registration;
+      if (data) list.push(data);
+    });
+    // Sort registrations by createdAt descending
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    registrations = list;
+    saveJSON(REGISTRATIONS_FILE, registrations);
+  } catch (err) {
+    console.error("Error fetching registrations from Firestore, falling back to local cache:", err);
   }
   return registrations;
 }
 
 async function getSuggestions(): Promise<Suggestion[]> {
-  if (process.env.VERCEL || suggestions.length === 0) {
-    try {
-      const res = await fetch(`${KVDB_BASE}/suggestions`);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.trim() !== "") {
-          const cloudSugs = JSON.parse(text);
-          if (Array.isArray(cloudSugs)) {
-            suggestions = cloudSugs;
-            // Backup locally
-            saveJSON(SUGGESTIONS_FILE, suggestions);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching suggestions from cloud KV:", err);
-    }
+  try {
+    const querySnapshot = await getDocs(collection(db, "suggestions"));
+    const list: Suggestion[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data() as Suggestion;
+      if (data) list.push(data);
+    });
+    // Sort suggestions by createdAt descending
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    suggestions = list;
+    saveJSON(SUGGESTIONS_FILE, suggestions);
+  } catch (err) {
+    console.error("Error fetching suggestions from Firestore, falling back to local cache:", err);
   }
   return suggestions;
 }
 
-async function persistRegistrations(list: Registration[]) {
-  saveJSON(REGISTRATIONS_FILE, list);
+async function getEventViews(): Promise<Record<string, number>> {
+  const viewsMap: Record<string, number> = {};
   try {
-    await fetch(`${KVDB_BASE}/registrations`, {
-      method: "POST",
-      body: JSON.stringify(list),
-      headers: { "Content-Type": "application/json" }
+    const querySnapshot = await getDocs(collection(db, "event_views"));
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data && typeof data.count === "number") {
+        viewsMap[docSnap.id] = data.count;
+      }
     });
   } catch (err) {
-    console.error("Failed to sync registrations to Cloud KV store:", err);
+    console.error("Error fetching event views from Firestore:", err);
   }
+  return viewsMap;
 }
 
-async function persistSuggestions(list: Suggestion[]) {
-  saveJSON(SUGGESTIONS_FILE, list);
+async function incrementEventView(eventId: string): Promise<number> {
+  const docRef = doc(db, "event_views", eventId);
   try {
-    await fetch(`${KVDB_BASE}/suggestions`, {
-      method: "POST",
-      body: JSON.stringify(list),
-      headers: { "Content-Type": "application/json" }
+    let newCount = 1;
+    await runTransaction(db, async (transaction) => {
+      const sfDoc = await transaction.get(docRef);
+      if (sfDoc.exists()) {
+        const currentCount = sfDoc.data().count || 0;
+        newCount = currentCount + 1;
+        transaction.update(docRef, { count: newCount });
+      } else {
+        transaction.set(docRef, { eventId, count: 1 });
+      }
     });
+    return newCount;
   } catch (err) {
-    console.error("Failed to sync suggestions to Cloud KV store:", err);
+    console.error(`Error incrementing event view for ${eventId}, trying fallback:`, err);
+    try {
+      const docSnap = await getDoc(docRef);
+      const count = docSnap.exists() ? (docSnap.data().count || 0) + 1 : 1;
+      await setDoc(docRef, { eventId, count }, { merge: true });
+      return count;
+    } catch (fallbackErr) {
+      console.error("Fallback setting view also failed:", fallbackErr);
+      return 1;
+    }
   }
 }
 
@@ -140,7 +154,7 @@ app.get("/api/registrations", async (req, res) => {
 app.post("/api/registrations", async (req, res) => {
   const { firstName, lastName, instagram, whatsapp, eventIds, seeksAccommodation, accommodationNote } = req.body;
   
-  if (!firstName || !lastName || !whatsapp || !eventIds || !Array.isArray(eventIds)) {
+  if (!firstName || !lastName || !eventIds || !Array.isArray(eventIds)) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -156,10 +170,76 @@ app.post("/api/registrations", async (req, res) => {
     createdAt: Date.now(),
   };
 
-  registrations.unshift(newReg);
-  await persistRegistrations(registrations);
-  res.status(201).json(newReg);
+  try {
+    await setDoc(doc(db, "registrations", newReg.id), newReg);
+    res.status(201).json(newReg);
+  } catch (err) {
+    console.error("Error setting doc in firestore:", err);
+    res.status(500).json({ error: "Errore nel salvataggio della registrazione nel database cloud" });
+  }
 });
+
+app.delete("/api/registrations/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await deleteDoc(doc(db, "registrations", id));
+    res.json({ success: true, message: "Registration deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting doc from firestore:", err);
+    res.status(500).json({ error: "Errore nella cancellazione dal database cloud" });
+  }
+});
+
+async function sendSuggestionEmail(suggestion: Suggestion) {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
+
+  if (!smtpUser || !smtpPass) {
+    console.warn(
+      `[EMAIL NOTICE] SMTP_USER or SMTP_PASS non definiti negli environment secrets. Suggerimento memorizzato localmente, ma non è stato possibile inviare l'email a clubbingmembersonly@gmail.com: Title="${suggestion.title}", Date="${suggestion.date}"`
+    );
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    const mailOptions = {
+      from: `"Clubbing Members Only" <${smtpUser}>`,
+      to: "clubbingmembersonly@gmail.com",
+      subject: `Nuovo Suggerimento Evento: ${suggestion.title}`,
+      text: `Ciao,\n\nÈ stato inserito un nuovo suggerimento di evento sulla piattaforma:\n\nTitolo Evento: ${suggestion.title}\nData: ${suggestion.date}\nInserito il: ${new Date(suggestion.createdAt).toLocaleString("it-IT")}\n\nSaluti,\nClubbing Members Only Team`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; color: #1e293b; background-color: #f8fafc; border-radius: 12px; max-width: 600px; margin: auto; border: 1px solid #e2e8f0;">
+          <h2 style="color: #f43f5e; font-size: 20px; border-bottom: 2px solid #fda4af; padding-bottom: 8px; margin-top: 0;">Nuovo Suggerimento Evento!</h2>
+          <p style="font-size: 14px; line-height: 1.6;">Ciao,</p>
+          <p style="font-size: 14px; line-height: 1.6;">È stato inserito un nuovo suggerimento di evento sulla piattaforma <strong>Clubbing Members Only</strong>:</p>
+          <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border-left: 4px solid #f43f5e; margin: 15px 0; border-top: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+            <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Titolo Evento:</strong> ${suggestion.title}</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Data:</strong> ${suggestion.date}</p>
+            <p style="margin: 0; font-size: 12px; color: #64748b;"><strong>Inserito il:</strong> ${new Date(suggestion.createdAt).toLocaleString("it-IT")}</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-bottom: 0;">Questa è una notifica automatica generata dal sistema.</p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EMAIL SUCCESS] Email inviata con successo a clubbingmembersonly@gmail.com. Message ID: ${info.messageId}`);
+  } catch (err) {
+    console.error("[EMAIL ERROR] Impossibile inviare l'email con nodemailer:", err);
+  }
+}
 
 app.get("/api/suggestions", async (req, res) => {
   const list = await getSuggestions();
@@ -184,9 +264,29 @@ app.post("/api/suggestions", async (req, res) => {
     createdAt: Date.now(),
   };
 
-  suggestions.unshift(newSuggestion);
-  await persistSuggestions(suggestions);
-  res.status(201).json(newSuggestion);
+  try {
+    await setDoc(doc(db, "suggestions", newSuggestion.id), newSuggestion);
+    await sendSuggestionEmail(newSuggestion);
+    res.status(201).json(newSuggestion);
+  } catch (err) {
+    console.error("Error setting dynamic suggestion in firestore:", err);
+    res.status(500).json({ error: "Errore nel salvataggio del suggerimento nel database cloud" });
+  }
+});
+
+// Event Views endpoints for global click tracking
+app.get("/api/views", async (req, res) => {
+  const viewsMap = await getEventViews();
+  res.json(viewsMap);
+});
+
+app.post("/api/views/:eventId", async (req, res) => {
+  const { eventId } = req.params;
+  if (!eventId) {
+    return res.status(400).json({ error: "eventId is required" });
+  }
+  const count = await incrementEventView(eventId);
+  res.json(count);
 });
 
 // Configure Vite integration

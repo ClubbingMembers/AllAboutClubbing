@@ -106,14 +106,7 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  const [eventViews, setEventViews] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('clubbing_event_views_v2');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [eventViews, setEventViews] = useState<Record<string, number>>({});
 
   const [registrations, setRegistrations] = useState<EventRegistration[]>(() => {
     try {
@@ -126,7 +119,7 @@ export default function App() {
 
   const [suggestions, setSuggestions] = useState<{ id: string; title: string; date: string; createdAt: number; }[]>([]);
 
-  // Periodically fetch fresh global registrations & suggestions from backend server API
+  // Periodically fetch fresh global registrations, suggestions & event views from backend server API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -147,6 +140,16 @@ export default function App() {
         }
       } catch (err) {
         console.error('Failed to load suggestions from backend:', err);
+      }
+
+      try {
+        const viewsRes = await fetch('/api/views');
+        if (viewsRes.ok) {
+          const viewsData = await viewsRes.json();
+          setEventViews(viewsData);
+        }
+      } catch (err) {
+        console.error('Failed to load views from backend:', err);
       }
     };
 
@@ -311,14 +314,24 @@ export default function App() {
   }, [selectedEventId]);
 
   // Handle Event selections to set active event detail screen
-  const handleSelectEvent = (eventId: string) => {
+  const handleSelectEvent = async (eventId: string) => {
     setSelectedEventId(eventId);
-    setEventViews(prev => {
-      const updated = { ...prev, [eventId]: (prev[eventId] || 0) + 1 };
-      localStorage.setItem('clubbing_event_views_v2', JSON.stringify(updated));
-      return updated;
-    });
     triggerNotification(`Aperto dettaglio evento`);
+
+    // Increment click view counter globally on Firestore via server API
+    try {
+      const res = await fetch(`/api/views/${eventId}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const updatedCount = await res.json();
+        setEventViews(prev => ({ ...prev, [eventId]: updatedCount }));
+      }
+    } catch (err) {
+      console.error('Failed to update event view count globally:', err);
+      // Fallback optimistic increment
+      setEventViews(prev => ({ ...prev, [eventId]: (prev[eventId] || 0) + 1 }));
+    }
   };
 
   // Updates and data builders

@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "Registration": {
+      "title": "Registration",
+      "description": "User participation registration for music events",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique registration ID"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user"
+        },
+        "instagram": {
+          "type": "string",
+          "description": "Optional Instagram link/handle"
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "WhatsApp number"
+        },
+        "eventIds": {
+          "type": "array",
+          "description": "List of music event IDs the user is registering for"
+        },
+        "seeksAccommodation": {
+          "type": "boolean",
+          "description": "True if the user needs accommodation"
+        },
+        "accommodationNote": {
+          "type": "string",
+          "description": "Optional details about accommodation request"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp of creation"
+        }
+      },
+      "required": ["id", "firstName", "lastName", "whatsapp", "eventIds", "seeksAccommodation", "createdAt"]
+    },
+    "Suggestion": {
+      "title": "Suggestion",
+      "description": "User suggested electronic music events",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique suggestion ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Name of the suggested event"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date or period of the suggested event"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp of suggestions"
+        }
+      },
+      "required": ["id", "title", "date", "createdAt"]
+    },
+    "EventView": {
+      "title": "EventView",
+      "description": "Track the amount of times an event is clicked across all devices globally",
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "description": "Unique event identifier"
+        },
+        "count": {
+          "type": "number",
+          "description": "Dynamic total view count"
+        }
+      },
+      "required": ["eventId", "count"]
+    }
+  },
+  "firestore": {
+    "registrations": {
+      "schema": "Registration",
+      "description": "Global user event registrations"
+    },
+    "suggestions": {
+      "schema": "Suggestion",
+      "description": "Suggested music events"
+    },
+    "event_views": {
+      "schema": "EventView",
+      "description": "Global view counter for each event ID tracking user details click"
+    }
+  }
+}
