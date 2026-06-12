@@ -122,8 +122,9 @@ export default function App() {
   // Periodically fetch fresh global registrations, suggestions & event views from backend server API
   useEffect(() => {
     const fetchData = async () => {
+      const timestamp = Date.now();
       try {
-        const regRes = await fetch('/api/registrations');
+        const regRes = await fetch(`/api/registrations?_t=${timestamp}`, { cache: 'no-store' });
         if (regRes.ok) {
           const regData = await regRes.json();
           setRegistrations(regData);
@@ -133,7 +134,7 @@ export default function App() {
       }
 
       try {
-        const sugRes = await fetch('/api/suggestions');
+        const sugRes = await fetch(`/api/suggestions?_t=${timestamp}`, { cache: 'no-store' });
         if (sugRes.ok) {
           const sugData = await sugRes.json();
           setSuggestions(sugData);
@@ -143,7 +144,7 @@ export default function App() {
       }
 
       try {
-        const viewsRes = await fetch('/api/views');
+        const viewsRes = await fetch(`/api/views?_t=${timestamp}`, { cache: 'no-store' });
         if (viewsRes.ok) {
           const viewsData = await viewsRes.json();
           setEventViews(viewsData);

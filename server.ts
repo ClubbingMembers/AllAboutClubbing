@@ -4,6 +4,7 @@ import fs from "fs";
 import nodemailer from "nodemailer";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc, runTransaction } from "firebase/firestore";
+import firebaseConfig from "./firebase-applet-config.json";
 
 interface Registration {
   id: string;
@@ -28,6 +29,16 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Set Cache-Control headers to defeat aggressive mobile/proxy/browser caching on API endpoints
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
 
 // Persistent JSON file paths
 const REGISTRATIONS_FILE = path.join(process.cwd(), "registrations_db.json");
@@ -68,7 +79,6 @@ function cleanFirestoreData<T extends Record<string, any>>(obj: T): Partial<T> {
 }
 
 // Initialize Firebase
-const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8"));
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
