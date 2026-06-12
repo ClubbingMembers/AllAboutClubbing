@@ -55,6 +55,18 @@ function saveJSON<T>(file: string, list: T[]) {
   }
 }
 
+// Helper to clean undefined/null/empty-string values for Firestore compatibility
+function cleanFirestoreData<T extends Record<string, any>>(obj: T): Partial<T> {
+  const cleaned: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    if (value !== undefined && value !== null && value !== "") {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned as Partial<T>;
+}
+
 // Initialize Firebase
 const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8"));
 const firebaseApp = initializeApp(firebaseConfig);
@@ -171,8 +183,9 @@ app.post("/api/registrations", async (req, res) => {
   };
 
   try {
-    await setDoc(doc(db, "registrations", newReg.id), newReg);
-    res.status(201).json(newReg);
+    const cleanedReg = cleanFirestoreData(newReg) as Registration;
+    await setDoc(doc(db, "registrations", newReg.id), cleanedReg);
+    res.status(201).json(cleanedReg);
   } catch (err) {
     console.error("Error setting doc in firestore:", err);
     res.status(500).json({ error: "Errore nel salvataggio della registrazione nel database cloud" });
@@ -265,9 +278,10 @@ app.post("/api/suggestions", async (req, res) => {
   };
 
   try {
-    await setDoc(doc(db, "suggestions", newSuggestion.id), newSuggestion);
+    const cleanedSug = cleanFirestoreData(newSuggestion) as Suggestion;
+    await setDoc(doc(db, "suggestions", newSuggestion.id), cleanedSug);
     await sendSuggestionEmail(newSuggestion);
-    res.status(201).json(newSuggestion);
+    res.status(201).json(cleanedSug);
   } catch (err) {
     console.error("Error setting dynamic suggestion in firestore:", err);
     res.status(500).json({ error: "Errore nel salvataggio del suggerimento nel database cloud" });
